@@ -6,9 +6,9 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/stretchr/testify v1.10.0
 	github.com/tysonmote/gommap v0.0.3
-	google.golang.org/genproto v0.0.0-20200423170343-7949de9c1215
+	google.golang.org/genproto v0.0.0-20260120174246-409b4a993575
 	google.golang.org/grpc v1.78.0
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
@@ -31,9 +31,10 @@ require (
 	github.com/weppos/publicsuffix-go v0.5.0 // indirect
 	github.com/zmap/zcrypto v0.0.0-20190729165852-9051775e6a2e // indirect
 	github.com/zmap/zlint v0.0.0-20190806154020-fd021b4cfbeb // indirect
-	golang.org/x/crypto v0.44.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/crypto v0.47.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/text v0.33.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120174246-409b4a993575 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
