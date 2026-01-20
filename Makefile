@@ -1,8 +1,90 @@
-compile:
-         protoc api/v1/*.proto --go_out=. --go-grpc_out=. --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative --proto_path=.
-test:
-      go test -race ./...
-# START: begin
+# compile:
+# 	protoc api/v1/*.proto --go_out=. --go-grpc_out=. --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative --proto_path=.
+# test:
+# 	go test -race ./...
+# # START: begin
+# CONFIG_PATH=${HOME}/.proglog/
+
+# .PHONY: init
+# init:
+# 	mkdir -p ${CONFIG_PATH}
+
+# .PHONY: gencert
+# gencert:
+# 	cfssl gencert \
+# 		-initca test/ca-csr.json | cfssljson -bare ca
+
+# 	cfssl gencert \
+# 		-ca=ca.pem \
+# 		-ca-key=ca-key.pem \
+# 		-config=test/ca-config.json \
+# 		-profile=server \
+# 		test/server-csr.json | cfssljson -bare server
+		
+# # END: begin
+
+# # START: client
+# 	cfssl gencert \
+# 		-ca=ca.pem \
+# 		-ca-key=ca-key.pem \
+# 		-config=test/ca-config.json \
+# 		-profile=client \
+# 		test/client-csr.json | cfssljson -bare client
+# # END: client
+
+# # START: multi_client
+# 	cfssl gencert \
+# 		-ca=ca.pem \
+# 		-ca-key=ca-key.pem \
+# 		-config=test/ca-config.json \
+# 		-profile=client \
+# 		-cn="root" \
+# 		test/client-csr.json | cfssljson -bare root-client
+
+# 	cfssl gencert \
+# 		-ca=ca.pem \
+# 		-ca-key=ca-key.pem \
+# 		-config=test/ca-config.json \
+# 		-profile=client \
+# 		-cn="nobody" \
+# 		test/client-csr.json | cfssljson -bare nobody-client
+# # END: multi_client
+
+# # START: begin
+# 	mv *.pem *.csr ${CONFIG_PATH}
+
+# # END: begin
+# # START: auth
+# $(CONFIG_PATH)/model.conf:
+# 	cp test/model.conf $(CONFIG_PATH)/model.conf
+
+# $(CONFIG_PATH)/policy.csv:
+# 	cp test/policy.csv $(CONFIG_PATH)/policy.csv
+
+# # START: begin
+# .PHONY: test
+# # END: auth
+# test:
+# # END: begin
+# # START: auth
+# test: $(CONFIG_PATH)/policy.csv $(CONFIG_PATH)/model.conf
+# #: START: begin
+# 	go test -race ./...
+# # END: auth
+
+# .PHONY: compile
+# compile:
+# 	protoc api/v1/*.proto \
+# 		--go_out=. \
+# 		--go-grpc_out=. \
+# 		--go_opt=paths=source_relative \
+# 		--go-grpc_opt=paths=source_relative \
+# 		--proto_path=.
+
+# # END: begin
+
+
+     
 CONFIG_PATH=${HOME}/.proglog/
 
 .PHONY: init
@@ -11,28 +93,27 @@ init:
 
 .PHONY: gencert
 gencert:
+# 	 1. Initialize CA
 	cfssl gencert \
 		-initca test/ca-csr.json | cfssljson -bare ca
 
+# 2. Generate Server Certificate
 	cfssl gencert \
 		-ca=ca.pem \
 		-ca-key=ca-key.pem \
 		-config=test/ca-config.json \
 		-profile=server \
 		test/server-csr.json | cfssljson -bare server
-		
-# END: begin
 
-# START: client
+# 	# 3. Generate Standard Client Certificate
 	cfssl gencert \
 		-ca=ca.pem \
 		-ca-key=ca-key.pem \
 		-config=test/ca-config.json \
 		-profile=client \
 		test/client-csr.json | cfssljson -bare client
-# END: client
 
-# START: multi_client
+# 	# 4. Generate Root Client Certificate (CN=root)
 	cfssl gencert \
 		-ca=ca.pem \
 		-ca-key=ca-key.pem \
@@ -41,6 +122,7 @@ gencert:
 		-cn="root" \
 		test/client-csr.json | cfssljson -bare root-client
 
+# 	# 5. Generate Nobody Client Certificate (CN=nobody)
 	cfssl gencert \
 		-ca=ca.pem \
 		-ca-key=ca-key.pem \
@@ -48,29 +130,21 @@ gencert:
 		-profile=client \
 		-cn="nobody" \
 		test/client-csr.json | cfssljson -bare nobody-client
-# END: multi_client
 
-# START: begin
+# 	# 6. Move all certs to config path
 	mv *.pem *.csr ${CONFIG_PATH}
 
-# END: begin
-# START: auth
+# Copy the ACL model and policy to the config path
 $(CONFIG_PATH)/model.conf:
 	cp test/model.conf $(CONFIG_PATH)/model.conf
 
 $(CONFIG_PATH)/policy.csv:
 	cp test/policy.csv $(CONFIG_PATH)/policy.csv
 
-# START: begin
 .PHONY: test
-# END: auth
-test:
-# END: begin
-# START: auth
+# Test depends on the policy and model files existing first
 test: $(CONFIG_PATH)/policy.csv $(CONFIG_PATH)/model.conf
-#: START: begin
 	go test -race ./...
-# END: auth
 
 .PHONY: compile
 compile:
@@ -80,8 +154,3 @@ compile:
 		--go_opt=paths=source_relative \
 		--go-grpc_opt=paths=source_relative \
 		--proto_path=.
-
-# END: begin
-
-
-     

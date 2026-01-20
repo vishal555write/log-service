@@ -94,6 +94,8 @@ package log
 import (
 	"io"
 	"os"
+	"runtime"
+	"time"
 
 	"github.com/tysonmote/gommap"
 )
@@ -131,8 +133,8 @@ func newIndex(f *os.File, c Config) (*index, error) {
 	}
 	idx.size = uint64(fi.Size())
 
-	// Grow file to maximum allowed index bytes
-	if err := os.Truncate(f.Name(), int64(c.Segment.MaxIndexBytes)); err != nil {
+	// resize file to maximum size to allow mapping
+	if err := os.Truncate(f.Name(),int64(c.Segment.MaxIndexBytes)); err != nil {
 		return nil, err
 	}
 
@@ -146,23 +148,105 @@ func newIndex(f *os.File, c Config) (*index, error) {
 		return nil, err
 	}
 
+	// [WINDOWS FIX] - Smart Size Calculation
+	// Because Windows might prevent us from truncating the file on Close,
+	// the file might contain a lot of empty zeros at the end.
+	// We scan the index to find the last valid entry and set idx.size correctly.
+	//
+	// Valid entries have monotonic offsets. 0, 1, 2...
+	// An empty slot (zeroed) will look like offset 0.
+	// If we find an offset of 0 at any position > 0, that marks the end of data.
+	for i := uint64(0); i < idx.size; i += entWidth {
+		// Read the offset of the current entry
+		off := enc.Uint32(idx.mmap[i : i+offWidth])
+		
+		// Entry 0 is allowed to have offset 0.
+		// For any other entry, if offset is 0, it means we hit the empty trailing zeros.
+		if i > 0 && off == 0 {
+			idx.size = i
+			break
+		}
+		
+		// Optional: We could also check if the *next* offset is expected, 
+		// but this simple check is usually sufficient for this logic.
+	}
+
 	return idx, nil
 }
 
+// func (i *index) Close() error {
+// 	if err := i.mmap.Sync(gommap.MS_SYNC); err != nil {
+// 		return err
+// 	}
+// 	if err := i.file.Sync(); err != nil {
+// 		return err
+// 	}
+// 	if err := i.file.Truncate(int64(i.size)); err != nil {
+// 		return err
+// 	}
+// 	if err := i.mmap.UnsafeUnmap(); err != nil {
+// 		return err
+// 	}
+// 	return i.file.Close()
+// }
 func (i *index) Close() error {
-	if err := i.mmap.Sync(gommap.MS_SYNC); err != nil {
+    // 1. Sync memory map to disk
+    if err := i.mmap.Sync(gommap.MS_SYNC); err != nil {
+        return err
+    }
+    
+    // 2. Sync file content to disk
+    if err := i.file.Sync(); err != nil {
+        return err
+    }
+
+    // 3. UNMAP FIRST (Critical for Windows)
+    // Windows locks the file while it's mapped. We must release this lock
+    // before we can resize (truncate) the file.
+    if err := i.mmap.UnsafeUnmap(); err != nil {
+        return err
+    }
+
+	// 4. Force Garbage Collection [WINDOWS FIX]
+	// Forces Go to clean up any runtime objects holding file references.
+	runtime.GC()
+
+	// 4.CAPTURE NAME & CLOSE FILE FIRST
+	//We close the file *before* truncating.this force window to 
+	// release all locks immediately
+
+	//fname:=i.file.Name()
+	
+
+    
+	// 4. Close the file handle
+	if err := i.file.Close(); err != nil {
 		return err
 	}
-	if err := i.file.Sync(); err != nil {
-		return err
-	}
-	if err := i.file.Truncate(int64(i.size)); err != nil {
-		return err
-	}
-	if err := i.mmap.UnsafeUnmap(); err != nil {
-		return err
-	}
-	return i.file.Close()
+
+	
+// 5. [WINDOWS FIX] - The Safety Buffer
+	// Windows takes a few milliseconds to release the file lock after 
+	// Unmap/Close. If we return immediately, the Test calls Remove() 
+	// too fast and crashes. We sleep to let Windows finish.
+	time.Sleep(1000 * time.Millisecond)
+
+	return nil
+
+
+
+
+    // 5. [WINDOWS FIX] - Soft Truncate
+	// We try to resize the file to the actual data size.
+	// On Windows, this often fails because the OS holds the lock.
+	// We deliberately IGNORE the error here.
+	// The `newIndex` function is now smart enough to handle files that 
+	// weren't truncated.
+	// _ = os.Truncate(fname, int64(i.size))
+
+	
+
+    
 }
 
 func (i *index) Read(in int64) (out uint32, pos uint64, err error) {

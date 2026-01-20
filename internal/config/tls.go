@@ -4,8 +4,17 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"os"
 )
+
+type TLSConfig struct {
+	CertFile      string
+	KeyFile       string
+	CAFile        string
+	ServerAddress string
+	Server        bool
+}
+
 
 func SetupTLSConfig(cfg TLSConfig) (*tls.Config, error) {
 	var err error
@@ -21,7 +30,7 @@ func SetupTLSConfig(cfg TLSConfig) (*tls.Config, error) {
 		}
 	}
 	if cfg.CAFile != "" {
-		b, err := ioutil.ReadFile(cfg.CAFile)
+		b, err := os.ReadFile(cfg.CAFile)
 		if err != nil {
 			return nil, err
 		}
@@ -45,11 +54,4 @@ func SetupTLSConfig(cfg TLSConfig) (*tls.Config, error) {
 }
 
 
-type TLSConfig struct {
-	CertFile      string
-	KeyFile       string
-	CAFile        string
-	ServerAddress string
-	Server        bool
-}
 

@@ -366,10 +366,7 @@ func TestServer(t *testing.T) {
 		"unauthorized fails": testUnauthorized,
 	} {
 		t.Run(scenario, func(t *testing.T) {
-			rootClient,
-				nobodyClient,
-				config,
-				teardown := setupTest(t, nil)
+			rootClient,nobodyClient,config,teardown := setupTest(t, nil)
 			defer teardown()
 			fn(t, rootClient, nobodyClient, config)
 		})
